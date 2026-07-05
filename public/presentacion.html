@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Reveal Remote — Technical Talk</title>
+  <link rel="stylesheet" href="/node_modules/reveal.js/dist/reveal.css">
+  <link rel="stylesheet" href="/node_modules/reveal.js/dist/theme/black.css" id="theme">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #000000;
+      --bg2: #0a0a0d;
+      --bg3: #111115;
+      --border: rgba(255,255,255,0.05);
+      --border2: rgba(255,255,255,0.08);
+      --text: rgba(255,255,255,0.92);
+      --text2: rgba(255,255,255,0.42);
+      --text3: rgba(255,255,255,0.25);
+      --blue: #3b82f6;
+      --green: #3fb950;
+      --orange: #3b82f6;
+      --purple: #6b7280;
+      --yellow: #9ca3af;
+      --cyan: #3b82f6;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    /* === QR MODAL === */
+    #qr-trigger {
+      position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+      width: 120px; height: 20px; z-index: 10000;
+      cursor: pointer;
+      display: flex; align-items: flex-start; justify-content: center;
+    }
+    #qr-trigger::after {
+      content: '';
+      width: 36px; height: 3px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 100px;
+      margin-top: 5px;
+      transition: background .3s, width .3s;
+    }
+    #qr-trigger:hover::after {
+      background: rgba(255,255,255,0.3);
+      width: 48px;
+    }
+
+    #qr-overlay {
+      position: fixed; inset: 0; z-index: 9998;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s ease;
+    }
+    #qr-overlay.visible { opacity: 1; pointer-events: auto; }
+
+    #qr-modal {
+      position: fixed; left: 50%; top: 50%; z-index: 9999;
+      transform: translate(-50%, -50%) scale(0.9);
+      background: var(--bg2);
+      border: var(--border);
+      border-radius: 28px;
+      padding: 24px 32px 20px;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.08);
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s ease, transform .35s cubic-bezier(.22,1,.36,1);
+      min-width: 300px;
+    }
+    #qr-modal.visible {
+      opacity: 1; pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    #qr-modal .qr-head {
+      font-size: 17px; font-weight: 700; color: var(--text);
+      letter-spacing: -0.3px; margin-bottom: 2px;
+    }
+    #qr-modal .qr-sub {
+      font-size: 13px; color: var(--text2);
+      margin-bottom: 20px; font-weight: 400;
+    }
+    #qr-modal .qr-img-wrap {
+      background: #fff;
+      border-radius: 18px; padding: 14px;
+      display: inline-block;
+      border: var(--border);
+    }
+    #qr-modal img {
+      width: 180px; height: 180px;
+      display: block; margin: 0 auto;
+    }
+    #qr-modal .qr-url {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--blue);
+      margin-top: 14px; word-break: break-all;
+      background: var(--bg3); padding: 6px 12px;
+      border-radius: 8px; border: var(--border);
+    }
+    #qr-modal .qr-actions {
+      margin-top: 18px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    #qr-modal .qr-close {
+      background: var(--bg3); border: var(--border);
+      color: var(--text2); padding: 7px 22px;
+      border-radius: 100px; font-size: 13px; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-weight: 500;
+      transition: background .2s, color .2s;
+      outline: none;
+    }
+    #qr-modal .qr-close:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+
+    /* === UTILITY === */
+    .tk { font-family: 'JetBrains Mono', monospace; }
+    .tag {
+      display: inline-block;
+      background: rgba(59,130,246,0.1);
+      color: var(--blue);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.32em;
+      padding: 0.15em 0.6em;
+      border-radius: 6px;
+    }
+    .tag-green { background: rgba(63,185,80,0.1); color: var(--green); }
+    .tag-blue { background: rgba(59,130,246,0.1); color: var(--blue); }
+
+    .card {
+      background: var(--bg2);
+      border: var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      margin: 0.4rem auto;
+      max-width: 680px;
+    }
+    .card-sm {
+      background: var(--bg2);
+      border: var(--border);
+      border-radius: 12px;
+      padding: 0.6rem 0.8rem;
+      margin: 0.3rem auto;
+      max-width: 600px;
+    }
+
+    .step-row {
+      display: flex; align-items: center; gap: 0.6rem;
+      margin: 0.3rem 0; font-size: 0.5em;
+    }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 6px;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600; font-size: 10px;
+      background: var(--bg3); color: var(--text2);
+      border: var(--border);
+    }
+    .step-num.on { background: rgba(59,130,246,0.12); color: var(--blue); border-color: var(--blue); }
+    .step-num.ok { background: rgba(63,185,80,0.12); color: var(--green); border-color: var(--green); }
+
+    .grid-2 {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.6rem; max-width: 680px; margin: 0.4rem auto;
+    }
+    @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .feat {
+      background: var(--bg2); border: var(--border);
+      border-radius: 12px; padding: 0.6rem 0.8rem; text-align: left;
+    }
+    .feat .sym { font-size: 0.65em; margin-bottom: 0.1rem; }
+    .feat .name { font-weight: 600; font-size: 0.6em; color: var(--text); }
+    .feat .desc { color: var(--text2); font-size: 0.44em; margin-top: 0.1rem; line-height: 1.5; }
+
+    .flow-row {
+      display: flex; justify-content: center; align-items: center;
+      gap: 0.3rem; flex-wrap: wrap; margin: 0.3rem auto; max-width: 680px;
+    }
+    .flow-box {
+      background: var(--bg2); border: var(--border);
+      border-radius: 10px; padding: 0.3rem 0.6rem; text-align: center;
+      font-size: 0.4em;
+    }
+    .flow-box .fi { font-size: 1.1em; }
+    .flow-box .fl { color: var(--text2); font-size: 0.85em; margin-top: 0.05rem; }
+    .flow-arrow { color: var(--text3); font-size: 0.9em; }
+
+    .tech-chip {
+      background: var(--bg2); border: var(--border);
+      border-radius: 6px; padding: 0.15em 0.5em;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.32em; color: var(--text); margin: 0.1em;
+    }
+    .tech-chip .v { color: var(--text3); }
+
+    .section-title {
+      font-weight: 700; font-size: 2.1em;
+      letter-spacing: -0.5px; margin-bottom: 0.1em;
+    }
+    .section-sub {
+      font-size: 0.55em; color: var(--text2);
+      margin-bottom: 0.5em; font-weight: 400;
+    }
+    .hl { color: var(--blue); }
+    .hlb { color: var(--text); }
+    .hlg { color: var(--text2); }
+
+    .res-line {
+      font-size: 0.5em; line-height: 2.2; padding: 0.05em 0;
+    }
+    .res-line .ck { color: var(--green); font-family: 'JetBrains Mono', monospace; }
+    .res-line .lb { color: var(--text); }
+
+    .diagram {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.38em; line-height: 1.6;
+      text-align: left; color: var(--text3);
+    }
+    .diagram .a { color: var(--blue); }
+    .diagram .b { color: var(--text); }
+    .diagram .c { color: var(--text2); }
+    .diagram .d { color: var(--text3); }
+
+    .snippet {
+      background: #000000;
+      border: var(--border);
+      border-radius: 10px;
+      padding: 0.5rem 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.35em;
+      text-align: left;
+      line-height: 1.7;
+      max-width: 600px;
+      margin: 0.3rem auto;
+    }
+    .snippet .k { color: var(--blue); }
+    .snippet .s { color: var(--text2); }
+    .snippet .f { color: var(--blue); }
+    .snippet .c { color: var(--text3); font-style: italic; }
+    .snippet .v { color: var(--text); }
+    .snippet .o { color: var(--text2); }
+
+    .reveal .slides section { padding: 0.3rem 0; }
+    .reveal .slides section .fragment {
+      opacity: 0;
+      transition: opacity .35s ease, transform .35s ease;
+      transform: translateY(8px);
+    }
+    .reveal .slides section .fragment.visible {
+      opacity: 1;
+      transform: translateY(0);
+      text-align: center;
+    }
+
+    /* Override reveal.js black theme for OLED consistency */
+    .reveal, .reveal .slides { background: transparent !important; }
+    .reveal .slide-background { background: #000000 !important; }
+    .reveal .controls, .reveal .progress { background: transparent !important; }
+    .reveal .progress { color: var(--blue); }
+    .reveal .progress span { background: var(--blue) !important; }
+  </style>
+</head>
+<body>
+
+<div id="qr-trigger"></div>
+
+<div id="qr-overlay"></div>
+
+<div id="qr-modal">
+  <div class="qr-head">Control remoto</div>
+  <div class="qr-sub">Escaneá con tu celular para controlar la presentación</div>
+  <div class="qr-img-wrap" id="qr-image"></div>
+  <div class="qr-url" id="qr-url">Conectando...</div>
+  <div class="qr-actions"><button class="qr-close" id="qr-close">Cerrar</button></div>
+</div>
+
+<div class="reveal">
+  <div class="slides">
+
+    <!-- 1: PORTADA -->
+    <section data-valign="top">
+      <div style="margin-bottom:0.3em;">
+        <span class="tag">v1.0.0</span>
+        <span class="tag tag-green">open source</span>
+        <span class="tag tag-blue">MIT</span>
+      </div>
+      <h1 class="section-title" style="font-size:3em;">Reveal Remote</h1>
+      <p class="section-sub" style="font-size:0.6em; max-width:580px; margin:0.2em auto 0.5em;">
+        Control inalámbrico para presentaciones reveal.js 
+        <span class="tk" style="color:var(--blue);">WebSocket</span> +
+        <span class="tk" style="color:var(--blue);">Node.js</span> +
+        <span class="tk" style="color:var(--blue);">vanilla JS</span>
+      </p>
+      <div class="snippet" style="border: 6px solid var(--bg2); line-height:2;">
+        <span style="color:var(--green);">$</span> <span style="color:var(--text);" onclick="window.open('https://github.com/PierSoco/Reveal-Remote', '_blank')">git clone https://github.com/PierSoco/Reveal-Remote</span><br>
+        <span style="color:var(--green);">$</span> <span style="color:var(--text);">cd Reveal-Remote</span><br>
+        <span style="color:var(--green);">$</span> <span style="color:var(--text);">npm install</span><br>
+        <span style="color:var(--green);">$</span> <span style="color:var(--text);">node server/server.js</span><br>
+        <span style="color:var(--text2);">&nbsp;&nbsp;→ Servidor listo en http://0.0.0.0:3000</span>
+      </div>
+      <div style="margin-top:0.3em;">
+        <span class="tech-chip">📱 HTML + CSS + JS</span>
+        <span class="tech-chip">🔌 ws <span class="v">^8.21</span></span>
+        <span class="tech-chip">📡 Express <span class="v">^5.2</span></span>
+        <span class="tech-chip">📊 reveal.js <span class="v">^6.0</span></span>
+      </div>
+    </section>
+
+    <!-- 2: PROBLEMA -->
+    <section data-valign="top">
+      <h2 class="section-title">El Problema</h2>
+      <p class="section-sub">El orador atado al escritorio. La audiencia pierde conexión.</p>
+      <div class="grid-2">
+        <div class="feat fragment">
+          <div class="sym">🔗</div>
+          <div class="name">Sin movilidad</div>
+          <div class="desc">Cada slide requiere volver al teclado. Rompe el ritmo de la charla.</div>
+        </div>
+        <div class="feat fragment">
+          <div class="sym">📲</div>
+          <div class="name">Setup complejo</div>
+          <div class="desc">Apps, registros, configurar redes. Demasiado antes de empezar.</div>
+        </div>
+        <div class="feat fragment">
+          <div class="sym">📡</div>
+          <div class="name">Dependencia de red</div>
+          <div class="desc">WiFi caído o red corporativa restrictiva = la charla se complica.</div>
+        </div>
+        <div class="feat fragment">
+          <div class="sym">⚙️</div>
+          <div class="name">Sobreingeniería</div>
+          <div class="desc">Soluciones pesadas para un problema simple: pasar diapositivas.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3: QUÉ ES -->
+    <section data-valign="top">
+      <h2 class="section-title">¿Qué es?</h2>
+      <p class="section-sub">Un relay bidireccional entre dos navegadores vía WebSocket</p>
+      <div class="flow-row fragment">
+        <div class="flow-box">
+          <div class="fi">📱</div>
+          <div class="fl">Controller</div>
+        </div>
+        <div class="flow-arrow">⟷</div>
+        <div class="flow-box" style="border-color:var(--blue);">
+          <div class="fi">🌐</div>
+          <div class="fl" style="color:var(--blue);font-weight:600;">WebSocket</div>
+        </div>
+        <div class="flow-arrow">⟷</div>
+        <div class="flow-box">
+          <div class="fi">🖥️</div>
+          <div class="fl">Display</div>
+        </div>
+      </div>
+      <div class="card fragment">
+        <div style="font-size:0.5em; line-height:1.8; color:var(--text2);">
+          <p>
+            El servidor Node.js recibe los comandos táctiles del celular y los
+            <strong style="color:var(--text);">reenvía al instante</strong> a la
+            presentación. El celular solo necesita un navegador.
+          </p>
+          <p style="color:var(--green); font-weight:600; margin-top:0.3em;">
+            sin apps, sin registro, sin configuración
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4: ARQUITECTURA -->
+    <section data-valign="top">
+      <h2 class="section-title">Arquitectura</h2>
+      <p class="section-sub">Un solo proceso, un solo puerto, dos capas</p>
+      <div class="card" style="max-width:900px;">
+        <div style="display:flex; flex-direction:column; gap: 15px; font-size:0.4em;">
+
+          <div style="display:flex; justify-content:space-between; align-items:stretch; gap:8px;">
+            <div style="flex:1; background:var(--bg3); border:var(--border); border-radius:12px; padding:10px 12px; text-align:center;">
+              <div style="font-size:1.2rem; margin-bottom:2px;">📱</div>
+              <div style="color:var(--blue); font-weight:700; font-size:0.9rem;">Controller</div>
+              <div style="color:var(--text2); font-size:0.85em; margin-top:4px;">remote.html</div>
+              <div style="display:flex; flex-direction:column; gap:3px; margin-top:6px;">
+                <span style="background:var(--bg2); border:var(--border); border-radius:6px; padding:2px 8px; color:var(--text); font-size:0.9em;">touch / swipe → send action</span>
+                <span style="background:var(--bg2); border:var(--border); border-radius:6px; padding:2px 8px; color:var(--text); font-size:0.9em;">gesture trail canvas</span>
+                <span style="background:var(--bg2); border:var(--border); border-radius:6px; padding:2px 8px; color:var(--text); font-size:0.9em;">recibe slideInfo</span>
+              </div>
+            </div>
+            <div style="flex:0 0 auto; display:flex; align-items:center; color:var(--text3); font-size:1.5rem;">→</div>
+            <div style="flex:1.3; background:var(--bg3); border:var(--border); border-radius:12px; padding:10px 12px; text-align:center;">
+              <div style="font-size:1.2rem; margin-bottom:2px;">🖥️</div>
+              <div style="color:var(--blue); font-weight:700; font-size:0.9rem;">Server</div>
+              <div style="color:var(--text2); font-size:0.85em; margin-top:4px;">Node.js + Express + ws</div>
+              <div style="display:flex; flex-direction:column; gap:3px; margin-top:6px;">
+                <span style="background:var(--bg2); border:var(--border); border-radius:6px; padding:2px 8px; color:var(--text); font-size:0.9em;">sirve static + /remote + /api/qr</span>
+                <span style="background:var(--bg2); border:var(--border); border-radius:6px; padding:2px 8px; color:var(--text); font-size:0.9em;">relay: controller ↔ display</span>
+              </div>
+            </div>
+            <div style="flex:0 0 auto; display:flex; align-items:center; color:var(--text3); font-size:1.5rem;">→</div>
+            <div style="flex:1; background:var(--bg3); border:var(--border); border-radius:12px; padding:10px 12px; text-align:center;">
+              <div style="font-size:1.2rem; margin-bottom:2px;">💻</div>
+              <div style="color:var(--blue); font-weight:700; font-size:0.9rem;">Display</div>
+              <div style="color:var(--text2); font-size:0.85em; margin-top:4px;">presentacion.html</div>
+              <div style="display:flex; flex-direction:column; gap:3px; margin-top:6px;">
+                <span style="background:var(--bg2); border:var(--border); border-radius:6px; padding:2px 8px; color:var(--text); font-size:0.9em;">recibe action → Reveal.navigate</span>
+                <span style="background:var(--bg2); border:var(--border); border-radius:6px; padding:2px 8px; color:var(--text); font-size:0.9em;">envía slideInfo</span>
+                <span style="background:var(--bg2); border:var(--border); border-radius:6px; padding:2px 8px; color:var(--text); font-size:0.9em;">muestra QR para conectar</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:center;">
+            <span style="background:var(--bg2); border:1px solid var(--green); border-radius:100px; padding:4px 16px; color:var(--green); font-weight:600; font-size:0.9rem;">
+              mismo proceso — mismo puerto — sin dependencias externas
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5: FLUJO -->
+    <section data-valign="top">
+      <h2 class="section-title">Flujo de Conexión</h2>
+      <p class="section-sub">Del QR al control en 2 segundos</p>
+      <div class="card" style="max-width:800px;">
+        <div class="step-row" style="text-align:left;">
+          <span class="step-num on">1</span>
+          <span><span class="tk" style="color:var(--blue);">node server.js</span> — Express sirve <span class="tk" style="color:var(--orange);">/remote</span> y la API</span>
+        </div>
+        <div class="step-row fragment" style="text-align:left;">
+          <span class="step-num on">2</span>
+          <span>La PC abre WebSocket y se registra: <span class="tk" style="color:var(--green);">{ type: "display" }</span></span>
+        </div>
+        <div class="step-row fragment" style="text-align:left;">
+          <span class="step-num on">3</span>
+          <span>El QR se genera y se muestra en pantalla</span>
+        </div>
+        <div class="step-row fragment" style="text-align:left;">
+          <span class="step-num on">4</span>
+          <span>El celular escanea, abre el control y se conecta al WebSocket</span>
+        </div>
+        <div class="step-row fragment" style="text-align:left;">
+          <span class="step-num ok">5</span>
+          <span>Listo — cada toque viaja: <span class="tk" style="color:var(--green);">controller → relay → display → Reveal.js</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6: PROTOCOLO -->
+    <section data-valign="top">
+      <h2 class="section-title">Protocolo</h2>
+      <p class="section-sub">Mensajes JSON sobre WebSocket. Simple y extensible.</p>
+      <div class="grid-2">
+        <div class="card fragment" style="text-align:left;">
+          <div style="font-size:0.55em; color:var(--blue); font-weight:700; margin-bottom:0.3rem; letter-spacing:-0.2px;">
+            📤 Controller → Servidor
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="background:var(--bg3); border:var(--border); border-radius:8px; padding:8px 10px;">
+              <div style="font-size:0.38em; color:var(--text3); margin-bottom:2px;">Registro del control remoto</div>
+              <div class="tk" style="font-size:0.4em; color:var(--text); margin-top: 6px;">{ type: "controller" }</div>
+            </div>
+            <div style="background:var(--bg3); border:var(--border); border-radius:8px; padding:8px 10px;">
+              <div style="font-size:0.38em; color:var(--text3); margin-bottom:2px;">Navegación (← → ↑ ↓)</div>
+              <div class="tk" style="font-size:0.4em; color:var(--text); margin-top: 6px;">{ action: "left" }</div>
+              <div class="tk" style="font-size:0.4em; color:var(--text); margin-top: 6px;">{ action: "right" }</div>
+              <div class="tk" style="font-size:0.4em; color:var(--text); margin-top: 6px;">{ action: "up" }</div>
+              <div class="tk" style="font-size:0.4em; color:var(--text); margin-top: 6px;">{ action: "down" }</div>
+            </div>
+          </div>
+        </div>
+        <div class="card fragment" style="text-align:left;">
+          <div style="font-size:0.55em; color:var(--blue); font-weight:700; margin-bottom:0.3rem; letter-spacing:-0.2px;">
+            📥 Servidor → Display
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="background:var(--bg3); border:var(--border); border-radius:8px; padding:8px 10px;">
+              <div style="font-size:0.38em; color:var(--text3); margin-bottom:2px;">Reenvío de comandos</div>
+              <div class="tk" style="font-size:0.4em; color:var(--text); margin-top: 6px;">{ action: "right" }</div>
+            </div>
+            <div style="background:var(--bg3); border:var(--border); border-radius:8px; padding:8px 10px;">
+              <div style="font-size:0.38em; color:var(--text3); margin-bottom:2px;">Control conectado</div>
+              <div class="tk" style="font-size:0.4em; color:var(--text); margin-top: 6px;">{ type: "controller-connected" }</div>
+            </div>
+            <div style="background:var(--bg3); border:var(--border); border-radius:8px; padding:8px 10px;">
+              <div style="font-size:0.38em; color:var(--text3); margin-bottom:2px;">Estado de la diapositiva</div>
+              <div class="tk" style="font-size:0.4em; color:var(--text); margin-top: 6px;">{ type: "slideInfo", index: 6, total: 11, fragment: 2, totalFragments: 2 }</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7: SERVIDOR -->
+    <section data-valign="top">
+      <h2 class="section-title">Servidor</h2>
+      <p class="section-sub">El núcleo del sistema en menos de 120 líneas de Node.js</p>
+      <div class="card" style="text-align:left; max-width:600px;">
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="background:var(--bg3); border:var(--border); border-radius:10px; padding:10px 14px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="step-num on" style="width:20px;height:20px;font-size:9px;">1</span>
+              <span style="font-size:0.55em; color:var(--text); font-weight:600;">Escuchar conexiones</span>
+            </div>
+            <div style="font-size:0.4em; color:var(--text2); margin-left:28px;">
+              El servidor abre un WebSocket en el mismo puerto que Express.
+              Espera conexiones de <strong style="color:var(--text);">display</strong> (PC) y <strong style="color:var(--text);">controller</strong> (celular).
+            </div>
+          </div>
+          <div style="background:var(--bg3); border:var(--border); border-radius:10px; padding:10px 14px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="step-num on" style="width:20px;height:20px;font-size:9px;">2</span>
+              <span style="font-size:0.55em; color:var(--text); font-weight:600;">Clasificar según el tipo</span>
+            </div>
+            <div style="font-size:0.4em; color:var(--text2); margin-left:28px;">
+              Cada cliente envía un mensaje de registro:
+            </div>
+            <div style="display:flex; gap:8px; margin-top:6px; margin-left:28px; flex-wrap:wrap;">
+              <span class="tk" style="font-size:0.4em; background:var(--bg2); border:var(--border); border-radius:6px; padding:4px 10px; color:var(--blue);">{ type: "display" } → se guarda como display</span>
+              <span class="tk" style="font-size:0.4em; background:var(--bg2); border:var(--border); border-radius:6px; padding:4px 10px; color:var(--green);">{ type: "controller" } → se agrega a la lista</span>
+            </div>
+          </div>
+          <div style="background:var(--bg3); border:var(--border); border-radius:10px; padding:10px 14px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="step-num on" style="width:20px;height:20px;font-size:9px;">3</span>
+              <span style="font-size:0.55em; color:var(--text); font-weight:600;">Reenviar al display</span>
+            </div>
+            <div style="font-size:0.4em; color:var(--text2); margin-left:28px;">
+              Cuando el controller envía un <span class="tk" style="color:var(--text);">{ action: "right" }</span>,
+              el servidor lo reenvía al display. El display ejecuta <span class="tk" style="color:var(--blue);">Reveal.next()</span>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8: CLIENTE MÓVIL -->
+    <section data-valign="top">
+      <h2 class="section-title">Cliente Móvil</h2>
+      <p class="section-sub">HTML + CSS + JS vanilla. Sin frameworks, sin bundlers.</p>
+      <div class="grid-2">
+        <div class="feat fragment">
+          <div class="sym">👆</div>
+          <div class="name">Touch & swipe</div>
+          <div class="desc">Gesture trail con efecto cometa en canvas. Detección de dirección con umbral de 50px. Fade-out gradual al levantar el dedo.</div>
+        </div>
+        <div class="feat fragment">
+          <div class="sym">🎮</div>
+          <div class="name">D-Pad táctil</div>
+          <div class="desc">Botones grandes optimizados para el pulgar.</div>
+        </div>
+        <div class="feat fragment">
+          <div class="sym">⌨️</div>
+          <div class="name">Keyboard support</div>
+          <div class="desc">Flechas del teclado si usás una laptop como control.</div>
+        </div>
+        <div class="feat fragment">
+          <div class="sym">🔁</div>
+          <div class="name">Reconexión automática</div>
+          <div class="desc">Backoff exponencial (2s → 15s). Indicador visual de estado.</div>
+        </div>
+      </div>
+      <div class="flow-row fragment" style="margin-top:0.2em;">
+        <span class="tech-chip">remote.html</span>
+        <span class="tech-chip">cero frameworks</span>
+        <span class="tech-chip">navegador mobile</span>
+        <span class="tech-chip">gesture trail + D-Pad</span>
+      </div>
+    </section>
+
+    <!-- 9: STACK -->
+    <section data-valign="top">
+      <h2 class="section-title">Stack</h2>
+      <p class="section-sub">Cuatro dependencias de producción. Nada más.</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; max-width:560px; margin:0 auto;">
+        <div style="background:var(--bg2); border:var(--border); border-radius:12px; padding:10px 12px; text-align:center;">
+          <div style="font-size:0.7em; margin-bottom:2px;">🟢</div>
+          <div style="font-size:0.55em; color:var(--text); font-weight:600;">Express 5</div>
+          <div style="font-size:0.35em; color:var(--text2); margin-top:2px;">Servidor HTTP + routing + API REST</div>
+          <div style="font-size:0.35em; color:var(--text3); margin-top:2px;">^5.2</div>
+        </div>
+        <div style="background:var(--bg2); border:var(--border); border-radius:12px; padding:10px 12px; text-align:center;">
+          <div style="font-size:0.7em; margin-bottom:2px;">🔵</div>
+          <div style="font-size:0.55em; color:var(--text); font-weight:600;">ws</div>
+          <div style="font-size:0.35em; color:var(--text2); margin-top:2px;">WebSocket server para relay en tiempo real</div>
+          <div style="font-size:0.35em; color:var(--text3); margin-top:2px;">^8.21</div>
+        </div>
+        <div style="background:var(--bg2); border:var(--border); border-radius:12px; padding:10px 12px; text-align:center;">
+          <div style="font-size:0.7em; margin-bottom:2px;">🟣</div>
+          <div style="font-size:0.55em; color:var(--text); font-weight:600;">reveal.js</div>
+          <div style="font-size:0.35em; color:var(--text2); margin-top:2px;">Framework de presentaciones con fragmentos y eventos</div>
+          <div style="font-size:0.35em; color:var(--text3); margin-top:2px;">^6.0</div>
+        </div>
+        <div style="background:var(--bg2); border:var(--border); border-radius:12px; padding:10px 12px; text-align:center;">
+          <div style="font-size:0.7em; margin-bottom:2px;">🟡</div>
+          <div style="font-size:0.55em; color:var(--text); font-weight:600;">qrcode</div>
+          <div style="font-size:0.35em; color:var(--text2); margin-top:2px;">Generación de QR en el servidor (server-side)</div>
+          <div style="font-size:0.35em; color:var(--text3); margin-top:2px;">^1.5</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10: RESUMEN -->
+    <section data-valign="top">
+      <h2 class="section-title">En Resumen</h2>
+      <p class="section-sub">Lo que hace a Reveal Remote diferente</p>
+      <div class="card" style="text-align:left; max-width:660px;">
+        <div class="res-line" style="text-align:left;"><span class="ck">✔</span> <span class="lb">Cero instalación</span> — solo un navegador en el celular</div>
+        <div class="res-line fragment" style="text-align:left;"><span class="ck">✔</span> <span class="lb">Un solo puerto</span> — HTTP + WebSocket sin configuración extra</div>
+        <div class="res-line fragment" style="text-align:left;"><span class="ck">✔</span> <span class="lb">Conexión instantánea</span> — escaneás el QR y ya estás controlando</div>
+        <div class="res-line fragment" style="text-align:left;"><span class="ck">✔</span> <span class="lb">Sin frameworks</span> — JS vanilla, ~150 líneas en el cliente</div>
+        <div class="res-line fragment" style="text-align:left;"><span class="ck">✔</span> <span class="lb">Código abierto</span> — MIT, contribuí, modificá, adaptá</div>
+      </div>
+    </section>
+
+    <!-- 11: Q&A -->
+    <section data-valign="top">
+      <div style="font-size:3.5em; font-weight:700; color:var(--orange); margin-bottom:0.1em;">?</div>
+      <h2 class="section-title">¿Preguntas?</h2>
+      <p class="section-sub" style="max-width:500px; margin:0.2em auto 0.6em;">
+        Esta presentación es el ejemplo vivo — mové el mouse al borde
+        superior de la pantalla para escanear el QR.
+      </p>
+      <div class="card" style="display:inline-block; font-size:0.5em; padding:0.5rem 1.2rem;">
+        <span class="tk" style="color:var(--orange);" onclick="window.open('https://github.com/PierSoco/Reveal-Remote', '_blank')">https://github.com/PierSoco/Reveal-Remote</span><br>
+        <span style="color:var(--text3);">MIT License</span>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script src="/node_modules/reveal.js/dist/reveal.js"></script>
+<script>
+Reveal.initialize({
+  controls: false,
+  progress: true,
+  center: true,
+  hash: false,
+  transition: 'fade',
+  width: 960,
+  height: 700,
+  margin: 0.04,
+  minScale: 0.2,
+  maxScale: 2.0,
+  backgroundTransition: 'fade',
+  keyboard: { 27: null }
+});
+
+(function() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = protocol + '//' + location.host;
+  let ws = null;
+  let reconnectTimer = null;
+  let reconnectAttempts = 0;
+
+  const qrOverlay = document.getElementById('qr-overlay');
+  const qrModal = document.getElementById('qr-modal');
+  const qrTrigger = document.getElementById('qr-trigger');
+  const qrImage = document.getElementById('qr-image');
+  const qrUrl = document.getElementById('qr-url');
+  const qrClose = document.getElementById('qr-close');
+
+  function showQR() {
+    qrOverlay.classList.add('visible');
+    qrModal.classList.add('visible');
+  }
+
+  function hideQR() {
+    qrOverlay.classList.remove('visible');
+    qrModal.classList.remove('visible');
+  }
+
+  qrTrigger.addEventListener('mouseenter', showQR);
+  qrOverlay.addEventListener('click', hideQR);
+  qrClose.addEventListener('click', hideQR);
+
+  function sendSlideState() {
+    const indices = Reveal.getIndices();
+    const total = Reveal.getTotalSlides();
+    const currentSlide = Reveal.getCurrentSlide();
+    const totalFrags = currentSlide ? currentSlide.querySelectorAll('.fragment').length : 0;
+    const fragment = indices.f >= 0 ? indices.f + 1 : 0;
+    const msg = JSON.stringify({
+      type: 'slideInfo',
+      index: indices.h + 1,
+      total,
+      fragment,
+      totalFragments: totalFrags
+    });
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(msg);
+  }
+
+  function connect() {
+    ws = new WebSocket(wsUrl);
+    ws.onopen = () => {
+      reconnectAttempts = 0;
+      ws.send(JSON.stringify({ type: 'display' }));
+      setupQR();
+    };
+    ws.onclose = () => {
+      const delay = Math.min(2000 * Math.pow(1.5, reconnectAttempts), 15000);
+      reconnectAttempts++;
+      reconnectTimer = setTimeout(connect, delay);
+    };
+    ws.onerror = () => { ws.close(); };
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'controller-connected') {
+          hideQR();
+          sendSlideState();
+        } else if (msg.type === 'key') {
+          if (msg.key === 'ArrowLeft') Reveal.left();
+          else if (msg.key === 'ArrowRight') Reveal.right();
+          else if (msg.key === 'ArrowUp') Reveal.up();
+          else if (msg.key === 'ArrowDown') Reveal.down();
+          else if (msg.key === 'f' || msg.key === 'F') Reveal.toggleOverview();
+        } else if (msg.type === 'navigate') {
+          if (msg.action === 'next') Reveal.next();
+          else if (msg.action === 'prev') Reveal.prev();
+        } else if (msg.action) {
+          if (msg.action === 'left') Reveal.left();
+          else if (msg.action === 'right') Reveal.right();
+          else if (msg.action === 'up') Reveal.up();
+          else if (msg.action === 'down') Reveal.down();
+        }
+      } catch(_) {}
+    };
+  }
+
+  function setupQR() {
+    const remoteUrl = 'http://192.168.0.146:3000/remote';
+    qrUrl.textContent = remoteUrl;
+    fetch('/api/qr?url=' + encodeURIComponent(remoteUrl))
+      .then(r => r.json())
+      .then(data => {
+        if (data.dataUrl) {
+          qrImage.innerHTML = '<img src="' + data.dataUrl + '" alt="QR">';
+        }
+      })
+      .catch(() => {});
+  }
+
+  Reveal.addEventListener('ready', () => {
+    Reveal.addEventListener('slidechanged', sendSlideState);
+    Reveal.addEventListener('fragmentshown', sendSlideState);
+    Reveal.addEventListener('fragmenthidden', sendSlideState);
+    connect();
+  });
+})();
+</script>
+</body>
+</html>
