@@ -33,91 +33,6 @@
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
 
-    /* === QR MODAL === */
-    #qr-trigger {
-      position: fixed; top: 0; left: 50%; transform: translateX(-50%);
-      width: 120px; height: 20px; z-index: 10000;
-      cursor: pointer;
-      display: flex; align-items: flex-start; justify-content: center;
-    }
-    #qr-trigger::after {
-      content: '';
-      width: 36px; height: 3px;
-      background: rgba(255,255,255,0.12);
-      border-radius: 100px;
-      margin-top: 5px;
-      transition: background .3s, width .3s;
-    }
-    #qr-trigger:hover::after {
-      background: rgba(255,255,255,0.3);
-      width: 48px;
-    }
-
-    #qr-overlay {
-      position: fixed; inset: 0; z-index: 9998;
-      background: rgba(0,0,0,0.5);
-      backdrop-filter: blur(4px);
-      opacity: 0; pointer-events: none;
-      transition: opacity .3s ease;
-    }
-    #qr-overlay.visible { opacity: 1; pointer-events: auto; }
-
-    #qr-modal {
-      position: fixed; left: 50%; top: 50%; z-index: 9999;
-      transform: translate(-50%, -50%) scale(0.9);
-      background: var(--bg2);
-      border: var(--border);
-      border-radius: 28px;
-      padding: 24px 32px 20px;
-      text-align: center;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.08);
-      opacity: 0; pointer-events: none;
-      transition: opacity .3s ease, transform .35s cubic-bezier(.22,1,.36,1);
-      min-width: 300px;
-    }
-    #qr-modal.visible {
-      opacity: 1; pointer-events: auto;
-      transform: translate(-50%, -50%) scale(1);
-    }
-    #qr-modal .qr-head {
-      font-size: 17px; font-weight: 700; color: var(--text);
-      letter-spacing: -0.3px; margin-bottom: 2px;
-    }
-    #qr-modal .qr-sub {
-      font-size: 13px; color: var(--text2);
-      margin-bottom: 20px; font-weight: 400;
-    }
-    #qr-modal .qr-img-wrap {
-      background: #fff;
-      border-radius: 18px; padding: 14px;
-      display: inline-block;
-      border: var(--border);
-    }
-    #qr-modal img {
-      width: 180px; height: 180px;
-      display: block; margin: 0 auto;
-    }
-    #qr-modal .qr-url {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px; color: var(--blue);
-      margin-top: 14px; word-break: break-all;
-      background: var(--bg3); padding: 6px 12px;
-      border-radius: 8px; border: var(--border);
-    }
-    #qr-modal .qr-actions {
-      margin-top: 18px;
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-    }
-    #qr-modal .qr-close {
-      background: var(--bg3); border: var(--border);
-      color: var(--text2); padding: 7px 22px;
-      border-radius: 100px; font-size: 13px; cursor: pointer;
-      font-family: 'Inter', sans-serif; font-weight: 500;
-      transition: background .2s, color .2s;
-      outline: none;
-    }
-    #qr-modal .qr-close:hover { background: rgba(255,255,255,0.08); color: var(--text); }
-
     /* === UTILITY === */
     .tk { font-family: 'JetBrains Mono', monospace; }
     .tag {
@@ -269,17 +184,65 @@
 </head>
 <body>
 
-<div id="qr-trigger"></div>
+<script>
+(function() {
+  // === QR MODAL — self-contained block ===
+  var style = document.createElement('style');
+  style.textContent = [
+    '#qr-trigger{position:fixed;top:0;left:50%;transform:translateX(-50%);width:120px;height:20px;z-index:10000;cursor:pointer;display:flex;align-items:flex-start;justify-content:center}',
+    '#qr-trigger::after{content:"";width:36px;height:3px;background:rgba(255,255,255,0.12);border-radius:100px;margin-top:5px;transition:background .3s,width .3s}',
+    '#qr-trigger:hover::after{background:rgba(255,255,255,0.3);width:48px}',
+    '#qr-overlay{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .3s ease}',
+    '#qr-overlay.visible{opacity:1;pointer-events:auto}',
+    '#qr-modal{position:fixed;left:50%;top:50%;z-index:9999;transform:translate(-50%,-50%) scale(0.9);background:var(--bg2,#0a0a0d);border:1px solid var(--border,rgba(255,255,255,0.05));border-radius:28px;padding:24px 32px 20px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.6),0 0 0 1px rgba(59,130,246,0.08);opacity:0;pointer-events:none;transition:opacity .3s ease,transform .35s cubic-bezier(.22,1,.36,1);min-width:300px}',
+    '#qr-modal.visible{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}',
+    '#qr-modal .qr-head{font-size:17px;font-weight:700;color:var(--text,rgba(255,255,255,0.92));letter-spacing:-0.3px;margin-bottom:2px}',
+    '#qr-modal .qr-sub{font-size:13px;color:var(--text2,rgba(255,255,255,0.42));margin-bottom:20px;font-weight:400}',
+    '#qr-modal .qr-img-wrap{background:#fff;border-radius:18px;padding:14px;display:inline-block;border:1px solid var(--border,rgba(255,255,255,0.05))}',
+    '#qr-modal img{width:180px;height:180px;display:block;margin:0 auto}',
+    '#qr-modal .qr-url{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--blue,#3b82f6);margin-top:14px;word-break:break-all;background:var(--bg3,#111115);padding:6px 12px;border-radius:8px;border:1px solid var(--border,rgba(255,255,255,0.05))}',
+    '#qr-modal .qr-actions{margin-top:18px;display:flex;align-items:center;justify-content:center;gap:10px}',
+    '#qr-modal .qr-close{background:var(--bg3,#111115);border:1px solid var(--border,rgba(255,255,255,0.05));color:var(--text2,rgba(255,255,255,0.42));padding:7px 22px;border-radius:100px;font-size:13px;cursor:pointer;font-family:Inter,system-ui,-apple-system,sans-serif;font-weight:500;transition:background .2s,color .2s;outline:none}',
+    '#qr-modal .qr-close:hover{background:rgba(255,255,255,0.08);color:var(--text,rgba(255,255,255,0.92))}'
+  ].join('');
+  document.head.appendChild(style);
 
-<div id="qr-overlay"></div>
+  var trigger = document.createElement('div');
+  trigger.id = 'qr-trigger';
+  document.body.appendChild(trigger);
 
-<div id="qr-modal">
-  <div class="qr-head">Control remoto</div>
-  <div class="qr-sub">Escaneá con tu celular para controlar la presentación</div>
-  <div class="qr-img-wrap" id="qr-image"></div>
-  <div class="qr-url" id="qr-url">Conectando...</div>
-  <div class="qr-actions"><button class="qr-close" id="qr-close">Cerrar</button></div>
-</div>
+  var overlay = document.createElement('div');
+  overlay.id = 'qr-overlay';
+  document.body.appendChild(overlay);
+
+  var modal = document.createElement('div');
+  modal.id = 'qr-modal';
+  modal.innerHTML = '<div class="qr-head">Control remoto</div><div class="qr-sub">Escaneá con tu celular para controlar la presentaci\u00f3n</div><div class="qr-img-wrap" id="qr-image"></div><div class="qr-url" id="qr-url">Conectando...</div><div class="qr-actions"><button class="qr-close" id="qr-close">Cerrar</button></div>';
+  document.body.appendChild(modal);
+
+  var image = document.getElementById('qr-image');
+  var urlEl = document.getElementById('qr-url');
+  var closeBtn = document.getElementById('qr-close');
+
+  function show() { overlay.classList.add('visible'); modal.classList.add('visible'); }
+  function hide() { overlay.classList.remove('visible'); modal.classList.remove('visible'); }
+
+  trigger.addEventListener('mouseenter', show);
+  overlay.addEventListener('click', hide);
+  closeBtn.addEventListener('click', hide);
+
+  function setup() {
+    var u = location.origin + '/remote';
+    urlEl.textContent = u;
+    fetch('/api/qr?url=' + encodeURIComponent(u))
+      .then(function(r) { return r.json(); })
+      .then(function(d) { if (d.dataUrl) image.innerHTML = '<img src="' + d.dataUrl + '" alt="QR">'; })
+      .catch(function() {});
+  }
+
+  window.QRModal = { show: show, hide: hide, setup: setup };
+})();
+</script>
 
 <div class="reveal">
   <div class="slides">
@@ -661,27 +624,6 @@ Reveal.initialize({
   let reconnectTimer = null;
   let reconnectAttempts = 0;
 
-  const qrOverlay = document.getElementById('qr-overlay');
-  const qrModal = document.getElementById('qr-modal');
-  const qrTrigger = document.getElementById('qr-trigger');
-  const qrImage = document.getElementById('qr-image');
-  const qrUrl = document.getElementById('qr-url');
-  const qrClose = document.getElementById('qr-close');
-
-  function showQR() {
-    qrOverlay.classList.add('visible');
-    qrModal.classList.add('visible');
-  }
-
-  function hideQR() {
-    qrOverlay.classList.remove('visible');
-    qrModal.classList.remove('visible');
-  }
-
-  qrTrigger.addEventListener('mouseenter', showQR);
-  qrOverlay.addEventListener('click', hideQR);
-  qrClose.addEventListener('click', hideQR);
-
   function sendSlideState() {
     const indices = Reveal.getIndices();
     const total = Reveal.getTotalSlides();
@@ -703,7 +645,7 @@ Reveal.initialize({
     ws.onopen = () => {
       reconnectAttempts = 0;
       ws.send(JSON.stringify({ type: 'display' }));
-      setupQR();
+      if (window.QRModal) window.QRModal.setup();
     };
     ws.onclose = () => {
       const delay = Math.min(2000 * Math.pow(1.5, reconnectAttempts), 15000);
@@ -715,7 +657,7 @@ Reveal.initialize({
       try {
         const msg = JSON.parse(e.data);
         if (msg.type === 'controller-connected') {
-          hideQR();
+          if (window.QRModal) window.QRModal.hide();
           sendSlideState();
         } else if (msg.type === 'key') {
           if (msg.key === 'ArrowLeft') Reveal.left();
@@ -734,19 +676,6 @@ Reveal.initialize({
         }
       } catch(_) {}
     };
-  }
-
-  function setupQR() {
-    const remoteUrl = 'http://192.168.0.146:3000/remote';
-    qrUrl.textContent = remoteUrl;
-    fetch('/api/qr?url=' + encodeURIComponent(remoteUrl))
-      .then(r => r.json())
-      .then(data => {
-        if (data.dataUrl) {
-          qrImage.innerHTML = '<img src="' + data.dataUrl + '" alt="QR">';
-        }
-      })
-      .catch(() => {});
   }
 
   Reveal.addEventListener('ready', () => {
