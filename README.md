@@ -2,14 +2,15 @@
 
 # 📱 Reveal Remote
 
-### Control remoto inalámbrico para presentaciones reveal.js
+**Control remoto inalámbrico de baja latencia para presentaciones en reveal.js**
 
 [![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)]()
 [![reveal.js](https://img.shields.io/badge/reveal.js-F2E142?style=for-the-badge&logo=revealdotjs&logoColor=black)]()
 [![WebSocket](https://img.shields.io/badge/WebSocket-000000?style=for-the-badge&logo=socketdotio&logoColor=white)]()
 [![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-**Navegá tus slides desde el celular sin instalar nada. Escaneá el QR y controlá la presentación.**
+Navegá tus *slides* desde el celular sin instalar dependencias. Escaneá el código QR, sincronizá el dispositivo en tiempo real y tomá el control absoluto de tu presentación.
 
 </div>
 
@@ -33,31 +34,22 @@
 
 ## 🧐 ¿Qué es?
 
-Este proyecto es un **control remoto inalámbrico para presentaciones reveal.js** que funciona a través de WebSocket. Con tu celular en la misma red podés navegar las slides usando **botones direccionales** o **gestos de deslizamiento** con estela visual animada, sin necesidad de instalar ninguna app.
+**Reveal Remote** es una solución *Zero-Configuration* diseñada para controlar presentaciones web basadas en [reveal.js](https://revealjs.com/). Utilizando un protocolo ligero sobre WebSockets, convierte cualquier dispositivo móvil conectado a la misma red local en un control remoto interactivo.
 
-Incluye una **presentación demo** que documenta la propia arquitectura del proyecto, pero podés **usar el control remoto con cualquier presentación reveal.js** agregando unas líneas de JavaScript.
+No requiere la instalación de aplicaciones de terceros; opera directamente desde el navegador del dispositivo móvil ofreciendo soporte para **D-Pad táctil**, **gestos de deslizamiento (swipe)** y **feedback háptico**.
 
 ---
 
 ## ⚙️ ¿Cómo funciona?
 
-Tres actores se comunican a través de WebSocket:
+El sistema se basa en una arquitectura cliente-servidor mediada por WebSockets, donde tres actores principales interactúan en tiempo real con latencia mínima:
 
-```
-📱 Celular (Controller)                      💻 PC (Display)
-  remote.html                                  presentacion.html
-       │                                            ▲
-       │  { action: "right" }                       │
-       ├─────────────── WebSocket ──────────────────┤
-       │                                            │
-       │                Servidor                    │
-       │        Node.js + Express + ws              │
-       │        (recibe del controller,             │
-       │          reenvía al display)               │
-       │                                            │
-       └─────────────── WebSocket ──────────────────┘
-                  { type: "slideInfo",
-                 index: 3, fragment: 2 }
+```mermaid
+graph LR
+    C[📱 Controller<br/>remote.html] -- "{ action: 'right' }" --> S((⚙️ Servidor<br/>Node.js + ws))
+    S -- "{ action: 'right' }" --> D[💻 Display<br/>presentacion.html]
+    D -- "{ type: 'slideInfo' }" --> S
+    S -- "{ type: 'slideInfo' }" --> C
 ```
 
 **Secuencia:**
@@ -89,18 +81,13 @@ La presentación demo (`presentacion.html`) es una **charla técnica sobre el pr
 
 ## ✨ Características
 
-| Característica                 | Detalle                                                         |
-| ------------------------------ | --------------------------------------------------------------- |
-| 📱 **Sin instalación**         | No requiere app, funciona en el navegador del celular           |
-| 🔗 **Conexión por QR**         | Modal centrado con drop animation, se cierra automáticamente    |
-| 🕹️ **Botones direccionales**   | D-Pad con arriba, abajo, anterior, siguiente + feedback háptico |
-| 👆 **Gesture trail**           | Estela visual con fade-out gradual al levantar el dedo          |
-| 🔄 **Reconexión automática**   | Backoff exponencial (2s → 15s), indicador visual de estado      |
-| 📊 **Sincronización de slide** | Muestra slide + fragmento (ej: 2.3) y barra de progreso         |
-| ⌨️ **Long-press**              | Mantener un botón lo repite cada 80ms tras 300ms de hold        |
-| 🖤 **Diseño OLED**             | Fondo `#000000`, monocromático con acento azul                  |
-| 🌐 **Sin frameworks**          | JS vanilla, cero dependencias del lado del cliente              |
-| 🔌 **Un solo puerto**          | HTTP + WebSocket conviven sin CORS ni proxy                     |
+* 📱 **Zero-Install Client:** Interfaz de control accesible vía web. Funciona en iOS y Android sin descargas.
+* ⚡ **Comunicación Real-Time:** Sincronización instantánea de estado bidireccional mediante WebSockets.
+* 🔗 **Pairing mediante QR:** Generación dinámica de códigos QR en el servidor para vinculación instantánea (Drop Animation UI).
+* 👆 **Gestos Avanzados:** Detección de *swipes* con estela visual (*gesture trail*) y soporte para eventos de *long-press* (repetición a 80ms).
+* 🔄 **Resiliencia de Red:** Estrategia de reconexión automática con *Exponential Backoff* (2s → 15s) e indicadores visuales de estado.
+* 📊 **Telemetría de Presentación:** Refleja en el dispositivo móvil el progreso, número de *slide* y fragmentos activos.
+* 🔌 **Single-Port Architecture:** El servidor HTTP estático y el servidor WebSocket conviven en el mismo puerto, evitando problemas de CORS.
 
 ---
 
@@ -167,120 +154,93 @@ En el celular:
 
 ---
 
-## 🏗️ Arquitectura
+## 🏗️ Arquitectura de Comunicación
 
-### Servidor (`server/server.js`)
+El sistema implementa un modelo de paso de mensajes (Message Broker ligero) donde un servidor centralizado enruta los eventos entre el `Controller` (Mobile) y el `Display` (Host).
 
-El servidor tiene dos responsabilidades en un mismo puerto:
+```mermaid
+sequenceDiagram
+    participant C as 📱 Controller (Celular)
+    participant S as ⚙️ WebSocket Server (Node.js)
+    participant D as 💻 Display (PC)
 
-**HTTP (Express 5):**
-
-- Sirve archivos estáticos desde `public/`
-- `GET /api/qr?url=...` → Genera un QR code y lo devuelve como data URL
-
-**WebSocket (ws):**
-
-- Gestiona dos tipos de clientes: `display` (la presentación) y `controller` (el celular)
-- Retransmite mensajes entre ellos
-
-### Cliente display (`presentacion.html`)
-
-Se conecta al WebSocket, escucha comandos `action` y los pasa a Reveal.js. También escucha `slidechanged`, `fragmentshown` y `fragmenthidden` para enviar el estado actualizado al control remoto.
-
-### Cliente controller (`remote.html`)
-
-Interfaz táctil optimizada para celular con:
-
-- D-Pad direccional con long-press
-- Gesture trail con canvas + fade-out animado
-- Indicador de conexión y barra de progreso
-- Reconexión automática con backoff exponencial
-
----
-
-## 🔌 Protocolo WebSocket
-
-### Display → Servidor
-
-```json
-{ "type": "display" }
-// Registra la presentación como display
-```
-
-### Controller → Servidor
-
-```json
-{ "type": "controller" }
-// Registra el control remoto como controller
-```
-
-### Controller → Servidor → Display
-
-```json
-{ "action": "left" | "right" | "up" | "down" }
-// Comando de navegación
-```
-
-### Display → Servidor → Controller
-
-```json
-{
-  "type": "slideInfo",
-  "index": 3,
-  "total": 14,
-  "fragment": 2,
-  "totalFragments": 5
-}
-// Información del slide actual con fragmento
-```
-
-### Servidor → Display
-
-```json
-{ "type": "controller-connected" }
-// Se envía cuando un controller se conecta
+    Note over S: Servidor en puerto 3000
+    D->>S: Conexión WS { type: "display" }
+    Note over C: Escanea QR
+    C->>S: Conexión WS { type: "controller" }
+    S-->>D: Evento { type: "controller-connected" }
+    
+    rect rgb(30, 30, 30)
+        Note over C,D: Flujo de Navegación
+        C->>S: Comando { action: "right" }
+        S->>D: Reenvía { action: "right" }
+        D-->>S: Estado { type: "slideInfo", index: 3, fragment: 2 }
+        S-->>C: Sincroniza { type: "slideInfo", index: 3, fragment: 2 }
+    end
 ```
 
 ---
+## 🔌 Especificación del Protocolo WS
 
-## 🛠️ Personalizar para tu presentación
+La comunicación se basa en *payloads* JSON estrictos:
 
-Para usar este control remoto con **tu propia presentación reveal.js**, agregá este código al final de tu HTML (antes de `</body>`):
+| Emisor | Receptor | Payload de Ejemplo | Descripción |
+| :--- | :--- | :--- | :--- |
+| **Display** | Server | `{ "type": "display" }` | Registra la sesión del presentador. |
+| **Controller**| Server | `{ "type": "controller" }` | Registra el mando móvil. |
+| **Controller**| Display | `{ "action": "right" }` | Comandos admitidos: `up`, `down`, `left`, `right`. |
+| **Display** | Controller| `{ "type": "slideInfo", "index": 3, "fragment": 2 }` | Sincroniza el estado actual del *deck* al dispositivo móvil. |
 
-```javascript
+---
+
+## 🛠️ Integración con tu Presentación
+
+El proyecto incluye una demostración técnica interactiva en `presentacion.html`. 
+
+Si querés implementar Reveal Remote en **tu propio entorno reveal.js**, simplemente inyectá este *snippet* antes del cierre de la etiqueta `</body>`:
+
+```html
 <script>
-(function() {
-  const ws = new WebSocket('ws://' + window.location.host);
-  ws.onopen = () => ws.send(JSON.stringify({ type: 'display' }));
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.type === 'controller-connected') {
-      // Opcional: cerrar QR, entrar en fullscreen, etc.
-    } else if (msg.action) {
-      if (msg.action === 'right') Reveal.right();
-      else if (msg.action === 'left') Reveal.left();
-      else if (msg.action === 'up') Reveal.up();
-      else if (msg.action === 'down') Reveal.down();
+  (function() {
+    const ws = new WebSocket('ws://' + window.location.host);
+    
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'display' }));
+    
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'controller-connected') {
+        // Hook opcional: Ejecutar animaciones, cerrar modales, etc.
+        console.log("Controlador vinculado.");
+      } else if (msg.action) {
+        const actions = {
+            'right': () => Reveal.right(),
+            'left':  () => Reveal.left(),
+            'up':    () => Reveal.up(),
+            'down':  () => Reveal.down()
+        };
+        if (actions[msg.action]) actions[msg.action]();
+      }
+    };
+
+    function syncState() {
+      const indices = Reveal.getIndices();
+      const currentSlide = Reveal.getCurrentSlide();
+      const fragmentCount = currentSlide ? currentSlide.querySelectorAll('.fragment').length : 0;
+      
+      ws.send(JSON.stringify({
+        type: 'slideInfo',
+        index: indices.h + 1,
+        total: Reveal.getTotalSlides(),
+        fragment: indices.f >= 0 ? indices.f + 1 : 0,
+        totalFragments: fragmentCount
+      }));
     }
-  };
-  function sendSlideState() {
-    const i = Reveal.getIndices();
-    const el = Reveal.getCurrentSlide();
-    const frags = el ? el.querySelectorAll('.fragment').length : 0;
-    ws.send(JSON.stringify({
-      type: 'slideInfo',
-      index: i.h + 1,
-      total: Reveal.getTotalSlides(),
-      fragment: i.f >= 0 ? i.f + 1 : 0,
-      totalFragments: frags
-    }));
-  }
-  Reveal.addEventListener('ready', () => {
-    Reveal.addEventListener('slidechanged', sendSlideState);
-    Reveal.addEventListener('fragmentshown', sendSlideState);
-    Reveal.addEventListener('fragmenthidden', sendSlideState);
-  });
-})();
+
+    Reveal.addEventListener('ready', syncState);
+    Reveal.addEventListener('slidechanged', syncState);
+    Reveal.addEventListener('fragmentshown', syncState);
+    Reveal.addEventListener('fragmenthidden', syncState);
+  })();
 </script>
 ```
 
@@ -290,11 +250,13 @@ Para usar este control remoto con **tu propia presentación reveal.js**, agregá
 
 - **Socodober Pierre** — [GitHub](https://github.com/PierSoco)
 
+Pull requests y reportes de issues son siempre bienvenidos.
+
 ---
 
 ## 📄 Licencia
 
-MIT — Sentite libre de usarlo, modificarlo y compartirlo.
+Distribuido bajo la Licencia MIT. Podés utilizar, modificar y distribuir este software de forma libre en proyectos personales o comerciales.
 
 ---
 
